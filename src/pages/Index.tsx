@@ -1,12 +1,44 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { ChatHeader } from "@/components/ChatHeader";
+import { TabNavigation } from "@/components/TabNavigation";
+import { UploadFiles } from "@/components/UploadFiles";
+import { ChatInterface } from "@/components/ChatInterface";
+import { DataControl } from "@/components/DataControl";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState<"upload" | "chat" | "data">("upload");
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
+  const handleFilesUploaded = (files: File[]) => {
+    setUploadedFiles((prev) => [...prev, ...files]);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearAll = () => {
+    setUploadedFiles([]);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <ChatHeader />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      {activeTab === "upload" && (
+        <UploadFiles onFilesUploaded={handleFilesUploaded} />
+      )}
+      
+      {activeTab === "chat" && <ChatInterface />}
+      
+      {activeTab === "data" && (
+        <DataControl
+          files={uploadedFiles}
+          onRemoveFile={handleRemoveFile}
+          onClearAll={handleClearAll}
+        />
+      )}
     </div>
   );
 };
