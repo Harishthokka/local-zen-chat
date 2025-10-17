@@ -1,8 +1,9 @@
 import { pipeline, env } from "@huggingface/transformers";
 
-// Configure to use local models
-env.allowLocalModels = true;
+// Configure transformers.js for browser use
+env.allowLocalModels = false;
 env.allowRemoteModels = true;
+env.useBrowserCache = true;
 
 interface EmbeddingCache {
   embedder: any;
@@ -20,34 +21,55 @@ export class AIEngine {
     if (this.isInitialized) return;
     
     try {
-      console.log("Initializing AI models...");
+      console.log("Initializing AI models... This may take a minute.");
+      
+      // Try WebGPU first, fallback to WASM (CPU)
+      const device = "wasm" as const;
       
       // Initialize embedding model (small and fast)
       if (!modelCache?.embedder) {
+        console.log("Loading embedding model...");
         modelCache = {
           embedder: await pipeline(
             "feature-extraction",
             "Xenova/all-MiniLM-L6-v2",
-            { device: "webgpu" }
+            { 
+              device,
+              progress_callback: (progress: any) => {
+                if (progress.status === 'downloading') {
+                  console.log(`Downloading: ${progress.name} - ${Math.round(progress.progress || 0)}%`);
+                }
+              }
+            }
           ),
           generator: null
         };
+        console.log("Embedding model loaded successfully");
       }
       
       // Initialize text generation model (small for offline use)
       if (!modelCache?.generator) {
+        console.log("Loading text generation model...");
         modelCache.generator = await pipeline(
           "text2text-generation",
           "Xenova/flan-t5-small",
-          { device: "webgpu" }
+          { 
+            device,
+            progress_callback: (progress: any) => {
+              if (progress.status === 'downloading') {
+                console.log(`Downloading: ${progress.name} - ${Math.round(progress.progress || 0)}%`);
+              }
+            }
+          }
         );
+        console.log("Text generation model loaded successfully");
       }
       
       this.isInitialized = true;
-      console.log("AI models initialized successfully");
+      console.log("✅ All AI models initialized successfully");
     } catch (error) {
-      console.error("Error initializing AI models:", error);
-      throw error;
+      console.error("❌ Error initializing AI models:", error);
+      throw new Error(`Failed to initialize AI models: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

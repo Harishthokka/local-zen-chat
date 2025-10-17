@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { aiEngine } from "@/lib/aiEngine";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -17,12 +18,29 @@ export const ChatInterface = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    toast({
+      title: "Message deleted",
+      description: "The message has been removed from the chat.",
+    });
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
+    toast({
+      title: "Chat cleared",
+      description: "All messages have been removed.",
+    });
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -68,6 +86,19 @@ export const ChatInterface = () => {
 
   return (
     <div className="flex h-[calc(100vh-180px)] flex-col">
+      {messages.length > 0 && (
+        <div className="border-b border-border bg-card px-6 py-2 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearChat}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear Chat
+          </Button>
+        </div>
+      )}
       <ScrollArea className="flex-1 p-6" ref={scrollRef as any}>
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
@@ -81,16 +112,24 @@ export const ChatInterface = () => {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`group flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  className={`relative max-w-[80%] rounded-2xl px-4 py-3 ${
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border border-border text-foreground"
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute -right-2 -top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDeleteMessage(message.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   <p className="mt-1 text-xs opacity-70">
                     {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
