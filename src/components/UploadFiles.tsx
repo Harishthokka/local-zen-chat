@@ -65,24 +65,49 @@ export const UploadFiles = ({ onFilesUploaded, isProcessing, setIsProcessing }: 
         // Initialize AI engine
         await aiEngine.initialize();
 
-        // Process each file
+        const succeeded: File[] = [];
+        const failed: { name: string; reason?: string }[] = [];
+
+        // Process each file individually and continue on errors
         for (const file of validFiles) {
-          const parsed = await parseFile(file);
-          const chunks = chunkText(parsed.content);
-          await aiEngine.addDocument(parsed.fileName, parsed.content, chunks);
+          try {
+            const parsed = await parseFile(file);
+            if (!parsed.content || parsed.content.trim().length === 0) {
+              throw new Error("Empty content");
+            }
+            const chunks = chunkText(parsed.content);
+            await aiEngine.addDocument(parsed.fileName, parsed.content, chunks);
+            succeeded.push(file);
+          } catch (err: any) {
+            console.error(`Failed to process ${file.name}:`, err);
+            failed.push({ name: file.name, reason: err?.message });
+          }
         }
 
-        onFilesUploaded(validFiles);
-        
-        toast({
-          title: "Files processed successfully",
-          description: `${validFiles.length} file(s) indexed and ready for questions. Total chunks: ${aiEngine.getDocumentCount()}`,
-        });
+        if (succeeded.length > 0) {
+          onFilesUploaded(succeeded);
+          toast({
+            title: "Files processed",
+            description: `${succeeded.length} file(s) indexed. You can ask questions now.`,
+          });
+        }
+
+        if (failed.length > 0) {
+          toast({
+            title: "Some files failed",
+            description: `We couldn't process: ${failed.map((f) => f.name).join(", ")}`,
+            variant: "destructive",
+          });
+        }
+
+        if (succeeded.length === 0) {
+          throw new Error("No files processed successfully");
+        }
       } catch (error) {
         console.error("Error processing files:", error);
         toast({
           title: "Processing error",
-          description: "Failed to process some files. Please try again.",
+          description: "Failed to process files. Please try again.",
           variant: "destructive",
         });
       } finally {

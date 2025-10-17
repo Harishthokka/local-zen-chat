@@ -11,7 +11,7 @@ const getPdfJs = async () => {
     pdfjsLibPromise = import("pdfjs-dist").then((m: any) => {
       const pdfjsLib = m;
       // Use worker from CDN to avoid bundling issues
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.worker.min.js`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `/vendor/pdf.worker.min.mjs`;
       return pdfjsLib;
     });
   }
