@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Send } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { aiEngine } from "@/lib/aiEngine";
 
 interface Message {
   id: string;
@@ -14,9 +15,17 @@ interface Message {
 export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -27,22 +36,39 @@ export const ChatInterface = () => {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Query the AI engine
+      const response = await aiEngine.query(input);
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I'm processing your request locally. This is a demo response showing how the chat interface works.",
+        content: response,
         timestamp: new Date(),
       };
+      
       setMessages((prev) => [...prev, aiMessage]);
-    }, 1000);
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I encountered an error processing your question. Please make sure you've uploaded documents first.",
+        timestamp: new Date(),
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex h-[calc(100vh-180px)] flex-col">
-      <ScrollArea className="flex-1 p-6">
+      <ScrollArea className="flex-1 p-6" ref={scrollRef as any}>
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
@@ -79,12 +105,22 @@ export const ChatInterface = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Type your message..."
+            onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSend()}
+            placeholder="Ask a question about your documents..."
             className="flex-1"
+            disabled={isLoading}
           />
-          <Button onClick={handleSend} size="icon" className="bg-primary hover:bg-primary/90">
-            <Send className="h-4 w-4" />
+          <Button 
+            onClick={handleSend} 
+            size="icon" 
+            className="bg-primary hover:bg-primary/90"
+            disabled={isLoading || !input.trim()}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>

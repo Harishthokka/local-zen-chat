@@ -1,13 +1,17 @@
-import { Upload, Shield } from "lucide-react";
+import { Upload, Shield, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { parseFile, chunkText } from "@/lib/fileParser";
+import { aiEngine } from "@/lib/aiEngine";
 
 interface UploadFilesProps {
   onFilesUploaded: (files: File[]) => void;
+  isProcessing: boolean;
+  setIsProcessing: (value: boolean) => void;
 }
 
-export const UploadFiles = ({ onFilesUploaded }: UploadFilesProps) => {
+export const UploadFiles = ({ onFilesUploaded, isProcessing, setIsProcessing }: UploadFilesProps) => {
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
 
@@ -34,7 +38,7 @@ export const UploadFiles = ({ onFilesUploaded }: UploadFilesProps) => {
     }
   };
 
-  const handleFiles = (files: File[]) => {
+  const handleFiles = async (files: File[]) => {
     const validExtensions = [".txt", ".md", ".json", ".csv", ".log", ".pdf", ".pptx", ".docx"];
     const validFiles = files.filter((file) => {
       const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
@@ -50,11 +54,40 @@ export const UploadFiles = ({ onFilesUploaded }: UploadFilesProps) => {
     }
 
     if (validFiles.length > 0) {
-      onFilesUploaded(validFiles);
+      setIsProcessing(true);
+      
       toast({
-        title: "Files uploaded successfully",
-        description: `${validFiles.length} file(s) processed locally.`,
+        title: "Processing files...",
+        description: "Initializing AI models and processing your documents. This may take a minute.",
       });
+
+      try {
+        // Initialize AI engine
+        await aiEngine.initialize();
+
+        // Process each file
+        for (const file of validFiles) {
+          const parsed = await parseFile(file);
+          const chunks = chunkText(parsed.content);
+          await aiEngine.addDocument(parsed.fileName, parsed.content, chunks);
+        }
+
+        onFilesUploaded(validFiles);
+        
+        toast({
+          title: "Files processed successfully",
+          description: `${validFiles.length} file(s) indexed and ready for questions. Total chunks: ${aiEngine.getDocumentCount()}`,
+        });
+      } catch (error) {
+        console.error("Error processing files:", error);
+        toast({
+          title: "Processing error",
+          description: "Failed to process some files. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -90,8 +123,16 @@ export const UploadFiles = ({ onFilesUploaded }: UploadFilesProps) => {
         <Button
           className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6"
           onClick={() => document.getElementById("file-upload")?.click()}
+          disabled={isProcessing}
         >
-          Choose Files
+          {isProcessing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Choose Files"
+          )}
         </Button>
         <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-4 w-4 text-primary" />

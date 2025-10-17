@@ -1,7 +1,8 @@
-import { Trash2, File } from "lucide-react";
+import { Trash2, File, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { aiEngine } from "@/lib/aiEngine";
 
 interface DataControlProps {
   files: File[];
@@ -16,12 +17,16 @@ export const DataControl = ({ files, onRemoveFile, onClearAll }: DataControlProp
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
+  const documentCount = aiEngine.getDocumentCount();
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground">Data Control</h2>
-          <p className="text-sm text-muted-foreground">Manage your uploaded documents</p>
+          <p className="text-sm text-muted-foreground">
+            Manage your uploaded documents • {documentCount} chunks indexed
+          </p>
         </div>
         {files.length > 0 && (
           <Button variant="destructive" onClick={onClearAll}>
@@ -32,11 +37,15 @@ export const DataControl = ({ files, onRemoveFile, onClearAll }: DataControlProp
       </div>
 
       {files.length === 0 ? (
-        <Card className="flex min-h-[400px] items-center justify-center border-dashed">
+        <Card className="flex min-h-[400px] flex-col items-center justify-center border-dashed gap-4">
           <div className="text-center">
             <File className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-lg text-muted-foreground">No files uploaded</p>
             <p className="text-sm text-muted-foreground">Upload files to see them here</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <Database className="h-4 w-4 text-primary" />
+            <span>All processing happens locally in your browser</span>
           </div>
         </Card>
       ) : (
