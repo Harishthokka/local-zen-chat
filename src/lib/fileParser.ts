@@ -4,15 +4,15 @@ export interface ParsedDocument {
   fileType: string;
 }
 
-// Lazy-load pdf.js only when needed
+// Lazy-load pdf.js only when needed without npm (use vendored ESM from public/vendor)
 let pdfjsLibPromise: Promise<any> | null = null;
 const getPdfJs = async () => {
   if (!pdfjsLibPromise) {
-    pdfjsLibPromise = import("pdfjs-dist").then((m: any) => {
-      const pdfjsLib = m;
-      // Use worker from CDN to avoid bundling issues
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `/vendor/pdf.worker.min.mjs`;
-      return pdfjsLib;
+    // @ts-ignore - vendored ESM module resolved at runtime
+    pdfjsLibPromise = import(/* @vite-ignore */ "/vendor/pdf.mjs").then((m: any) => {
+      // Point to local worker served from same origin
+      m.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.mjs";
+      return m;
     });
   }
   return pdfjsLibPromise;

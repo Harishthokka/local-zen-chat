@@ -91,7 +91,7 @@ export const UploadFiles = ({ onFilesUploaded, isProcessing, setIsProcessing }: 
 
     toast({
       title: "Processing files...",
-      description: "Initializing AI models and processing your documents. This may take a minute.",
+      description: "Parsing your documents locally. This may take a moment.",
     });
 
       try {
