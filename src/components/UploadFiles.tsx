@@ -14,6 +14,9 @@ interface UploadFilesProps {
 export const UploadFiles = ({ onFilesUploaded, isProcessing, setIsProcessing }: UploadFilesProps) => {
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
+  // Upload constraints
+  const MAX_FILES = 10;
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -40,26 +43,56 @@ export const UploadFiles = ({ onFilesUploaded, isProcessing, setIsProcessing }: 
 
   const handleFiles = async (files: File[]) => {
     const validExtensions = [".txt", ".md", ".json", ".csv", ".log", ".pdf", ".pptx", ".docx"];
-    const validFiles = files.filter((file) => {
-      const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
-      return validExtensions.includes(ext);
-    });
 
-    if (validFiles.length !== files.length) {
+    // Enforce max files
+    let selected = files;
+    if (files.length > MAX_FILES) {
+      selected = files.slice(0, MAX_FILES);
       toast({
-        title: "Some files were rejected",
-        description: "Only TXT, MD, JSON, CSV, LOG, PDF, PPTX, DOCX files are supported.",
+        title: "Too many files",
+        description: `Only the first ${MAX_FILES} files will be processed.`,
+      });
+    }
+
+    // Reject oversized files
+    const tooLarge = selected.filter((f) => f.size > MAX_FILE_SIZE);
+    if (tooLarge.length > 0) {
+      toast({
+        title: "File(s) too large",
+        description: `${tooLarge.map((f) => f.name).join(", ")}: exceeds 20MB limit`,
+        variant: "destructive",
+      });
+    }
+    selected = selected.filter((f) => f.size <= MAX_FILE_SIZE);
+
+    // Reject unsupported extensions
+    const unsupported = selected.filter((file) => {
+      const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+      return !validExtensions.includes(ext);
+    });
+    if (unsupported.length > 0) {
+      toast({
+        title: "Unsupported file type",
+        description: `Only TXT, MD, JSON, CSV, LOG, PDF, PPTX, DOCX are supported. Skipped: ${unsupported
+          .map((f) => f.name)
+          .join(", ")}`,
         variant: "destructive",
       });
     }
 
-    if (validFiles.length > 0) {
-      setIsProcessing(true);
-      
-      toast({
-        title: "Processing files...",
-        description: "Initializing AI models and processing your documents. This may take a minute.",
-      });
+    const validFiles = selected.filter((file) => {
+      const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+      return validExtensions.includes(ext);
+    });
+
+    if (validFiles.length === 0) return;
+
+    setIsProcessing(true);
+
+    toast({
+      title: "Processing files...",
+      description: "Initializing AI models and processing your documents. This may take a minute.",
+    });
 
       try {
         // Initialize AI engine
@@ -113,7 +146,6 @@ export const UploadFiles = ({ onFilesUploaded, isProcessing, setIsProcessing }: 
       } finally {
         setIsProcessing(false);
       }
-    }
   };
 
   return (
