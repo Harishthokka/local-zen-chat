@@ -1,9 +1,23 @@
 import { pipeline, env } from "@huggingface/transformers";
 
-// Configure transformers.js for browser use
-env.allowLocalModels = false;
-env.allowRemoteModels = true;
+// Robust browser config for transformers.js
+env.allowRemoteModels = true; // download models once, cache in browser
 env.useBrowserCache = true;
+// Single-threaded WASM avoids COEP/COOP requirements
+// and works reliably on most hosts
+// @ts-ignore - types may not include nested fields
+env.backends = {
+  onnx: {
+    wasm: {
+      numThreads: 1,
+      simd: true,
+      proxy: false,
+    },
+  },
+} as any;
+// Explicit hub URL to avoid relative URL resolution issues
+// @ts-ignore
+env.HF_HUB_URL = "https://huggingface.co";
 
 interface EmbeddingCache {
   embedder: any;
